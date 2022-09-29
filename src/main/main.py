@@ -13,15 +13,25 @@ def main():
     display = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    d = 5
-    s = 1
+    d = 4
+    s = 2
 
-    corners, sides = generate_objects(s, d)
+    shapes = []
+
+    corners, sides, faces = generate_objects(s, d)
+
+    for side in sides:
+        shapes.append(Shape(side))
+    for face in faces:
+        shapes.append(Shape(face))
+
 
     r=0
 
-    cam_pos = np.zeros((d,1))
-    cam_pos[2,0] = -s*2-1
+    cam_pos = np.zeros((d,1)) - s - 1
+    cam_pos[0,0] = 0
+    cam_pos[1,0] = 0
+
 
 
     while True:
@@ -46,12 +56,13 @@ def main():
         screen_pos = (ZOOM * scaled + np.array([[WIDTH], [HEIGHT]]) / 2).T
 
 
-        for point in screen_pos:
+        #for point in screen_pos:
+            #pygame.draw.circle(display, (255,255,0), point, 5)
 
-            pygame.draw.circle(display, (255,255,0), point, 5)
+        ordered_shapes = sorted(shapes, reverse = True, key = lambda s : s.get_dist(transformed))
 
-        for side in sides:
-            pygame.draw.line(display, (0, 255, 255), screen_pos[side[0]], screen_pos[side[1]])
+        for shape in ordered_shapes:
+            shape.render(screen_pos, display)
 
 
         pygame.display.update()
@@ -73,31 +84,58 @@ def point_index(l, b, d):
 
     return t
 
+
 def generate_objects(squares, dimensions):
 
     points = []
     edges = []
+    faces = []
 
     n_points = squares+1
 
-    for i in range(n_points**dimensions):
-        n = point_generator(i, n_points, dimensions)
 
-        points.append(n)
+    for p1_index in range(n_points**dimensions):
+        p1 = point_generator(p1_index, n_points, dimensions)
 
-        for index, value in enumerate(n):
+        points.append(p1)
 
-            if n[index] >= squares:
-                continue
+        for index_a in range(dimensions):
 
-            end = n[:]
-            end[index] += 1
+            if p1[index_a] >= squares:
+                    continue
+
+            end = p1[:]
+            end[index_a] += 1
             end_index = point_index(end, n_points, dimensions)
-            edges.append((i, end_index))
+            edges.append((p1_index, end_index))
+
+            for index_b in range(dimensions):
+
+                if index_a >= index_b:
+                    continue
+
+                if p1[index_b] >= squares:
+                    continue
+
+
+                p2 = p1[:]
+                p2[index_a] += 1
+                p2_index = point_index(p2, n_points, dimensions)
+
+                p3 = p1[:]
+                p3[index_b] += 1
+                p3_index = point_index(p3, n_points, dimensions)
+
+                p4 = p1[:]
+                p4[index_a] += 1
+                p4[index_b] += 1
+                p4_index = point_index(p4, n_points, dimensions)
+
+                faces.append((p1_index, p2_index, p4_index, p3_index))
 
     point_array = np.array(points).T - squares/2
 
-    return point_array, edges
+    return point_array, edges, faces
 
 def gen_rotator(r, d, a, b):
     m = np.identity(d)
@@ -108,5 +146,24 @@ def gen_rotator(r, d, a, b):
     m[b, b] = math.cos(r)
 
     return m
+
+class Shape:
+
+    def __init__(self, indices):
+        self.indices = np.array(indices)
+
+    def get_dist(self, points):
+
+        return np.sum(np.mean(points[:, self.indices], axis=1)**2)
+
+    def render(self, points, display):
+
+        corners = points[self.indices, :]
+
+        if len(self.indices) == 2:
+            pygame.draw.line(display, (0, 255, 255), corners[0], corners[1], width = 5)
+
+        else:
+            pygame.draw.polygon(display, (0, 50, 50), corners)
 
 if __name__ == '__main__': main()
