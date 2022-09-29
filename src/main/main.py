@@ -13,13 +13,15 @@ def main():
     display = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    d = 4
+    d = 5
+    s = 1
 
-    corners, sides = generate_objects(3, d)
+    corners, sides = generate_objects(s, d)
 
     r=0
 
-    cam_pos = np.array([0, 0, -7, 0])
+    cam_pos = np.zeros((d,1))
+    cam_pos[2,0] = -s*2-1
 
 
     while True:
@@ -35,13 +37,13 @@ def main():
 
         pygame.draw.rect(display, (0,0,0), (0, 0, WIDTH, HEIGHT))
 
-        transformed = (corners @ rotation - cam_pos)
-        points_xy = transformed[:, :2].T
-        points_z = np.sum(transformed[:, 2:], axis=1)
+        transformed = (rotation @ corners - cam_pos)
+        points_xy = transformed[:2, :]
+        points_z = np.sum(transformed[2:, :], axis=0)
 
         scaled = points_xy / points_z
 
-        screen_pos = ZOOM * scaled.T + np.array([WIDTH, HEIGHT]) / 2
+        screen_pos = (ZOOM * scaled + np.array([[WIDTH], [HEIGHT]]) / 2).T
 
 
         for point in screen_pos:
@@ -78,8 +80,6 @@ def generate_objects(squares, dimensions):
 
     n_points = squares+1
 
-
-
     for i in range(n_points**dimensions):
         n = point_generator(i, n_points, dimensions)
 
@@ -93,9 +93,11 @@ def generate_objects(squares, dimensions):
             end = n[:]
             end[index] += 1
             end_index = point_index(end, n_points, dimensions)
-            edges.append([i, end_index])
+            edges.append((i, end_index))
 
-    return np.array(points) - squares/2, np.array(edges)
+    point_array = np.array(points).T - squares/2
+
+    return point_array, edges
 
 def gen_rotator(r, d, a, b):
     m = np.identity(d)
