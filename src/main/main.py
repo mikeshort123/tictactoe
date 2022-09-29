@@ -2,6 +2,7 @@ import pygame
 import sys
 import numpy as np
 import math
+import random
 
 def main():
 
@@ -13,17 +14,13 @@ def main():
     display = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    d = 4
+    d = 3
     s = 2
 
     shapes = []
 
-    corners, sides, faces = generate_objects(s, d)
+    corners, shapes, cubes = generate_objects(s, d)
 
-    for side in sides:
-        shapes.append(Shape(side))
-    for face in faces:
-        shapes.append(Shape(face))
 
 
     r=0
@@ -41,7 +38,7 @@ def main():
                 sys.exit()
 
 
-        rotation = gen_rotator(r, d, 1, 2) @ gen_rotator(r, d, 0, 3)
+        rotation = gen_rotator(r, d, 1, 2) @ gen_rotator(r, d, 0, 2)
 
         r += 0.01
 
@@ -91,6 +88,8 @@ def generate_objects(squares, dimensions):
     edges = []
     faces = []
 
+    cubes = Hyper_Cube.build_cube_list(squares, dimensions)
+
     n_points = squares+1
 
 
@@ -135,7 +134,13 @@ def generate_objects(squares, dimensions):
 
     point_array = np.array(points).T - squares/2
 
-    return point_array, edges, faces
+    shapes = []
+    for edge in edges:
+        shapes.append(Shape(edge, cubes))
+    for face in faces:
+        shapes.append(Shape(face, cubes))
+
+    return point_array, shapes, cubes
 
 def gen_rotator(r, d, a, b):
     m = np.identity(d)
@@ -149,8 +154,13 @@ def gen_rotator(r, d, a, b):
 
 class Shape:
 
-    def __init__(self, indices):
+    def __init__(self, indices, cubes):
         self.indices = np.array(indices)
+
+        self.cubes = []
+        for cube in cubes:
+            if cube.owns(self.indices):
+                self.cubes.append(cube)
 
     def get_dist(self, points):
 
@@ -164,6 +174,60 @@ class Shape:
             pygame.draw.line(display, (0, 255, 255), corners[0], corners[1], width = 5)
 
         else:
-            pygame.draw.polygon(display, (0, 50, 50), corners)
+            for cube in self.cubes:
+                if cube.active == True:
+                    pygame.draw.polygon(display, cube.colour, corners)
+                    return
+
+
+class Hyper_Cube:
+
+    def __init__(self, indices):
+
+        self.indices = indices
+        self.active = random.choice([True, False])
+        self.colour = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
+
+    def owns(self, indices):
+
+        for p in indices:
+            if p not in self.indices:
+                return False
+
+        return True
+
+    @staticmethod
+    def build_cube_list(squares, dimensions):
+        points = squares+1
+        cubes = []
+        base = np.array([i for i in Hyper_Cube.base_generator(0, [points**i for i in range(dimensions)])])
+
+        for offset in Hyper_Cube.offset_generator(0, 0, dimensions, points):
+            cubes.append(Hyper_Cube(base + offset))
+
+        return cubes
+
+    @staticmethod
+    def base_generator(t,l):
+
+        if t == []:
+            return
+
+        yield t
+
+        for i in range(len(l)):
+            yield from Hyper_Cube.base_generator(t+l[i], l[i+1:])
+
+
+    @staticmethod
+    def offset_generator(total, depth, max_depth, points):
+
+        if depth == max_depth:
+            yield total
+            return
+
+        for i in range(points-1):
+            yield from Hyper_Cube.offset_generator(i * points**depth + total, depth+1, max_depth, points)
+
 
 if __name__ == '__main__': main()
