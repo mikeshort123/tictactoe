@@ -13,13 +13,13 @@ def main():
     display = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    d = 3
+    d = 4
 
-    corners, sides = generate_objects(1, d)
+    corners, sides = generate_objects(3, d)
 
     r=0
 
-    cam_pos = np.array([0, 0, -6])
+    cam_pos = np.array([0, 0, -7, 0])
 
 
     while True:
@@ -28,31 +28,20 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-        rotation_a = np.array([
-            [math.cos(r), 0,-math.sin(r)],
-            [0, 1, 0],
-            [math.sin(r), 0, math.cos(r)]
 
-        ])
-
-        rotation_b = np.array([
-            [math.cos(r), -math.sin(r), 0],
-            [math.sin(r),  math.cos(r), 0],
-            [0, 0, 1]
-
-        ])
-
-        rotation = rotation_a @ rotation_b
+        rotation = gen_rotator(r, d, 1, 2) @ gen_rotator(r, d, 0, 3)
 
         r += 0.01
 
         pygame.draw.rect(display, (0,0,0), (0, 0, WIDTH, HEIGHT))
 
         transformed = (corners @ rotation - cam_pos)
-        points_xy = transformed[:, 0:2]
-        points_z = transformed[:, 2:3]
+        points_xy = transformed[:, :2].T
+        points_z = np.sum(transformed[:, 2:], axis=1)
 
-        screen_pos = ZOOM * (points_xy / points_z) + np.array([WIDTH, HEIGHT]) / 2
+        scaled = points_xy / points_z
+
+        screen_pos = ZOOM * scaled.T + np.array([WIDTH, HEIGHT]) / 2
 
 
         for point in screen_pos:
@@ -108,5 +97,14 @@ def generate_objects(squares, dimensions):
 
     return np.array(points) - squares/2, np.array(edges)
 
+def gen_rotator(r, d, a, b):
+    m = np.identity(d)
+
+    m[a, a] = math.cos(r)
+    m[a, b] =-math.sin(r)
+    m[b, a] = math.sin(r)
+    m[b, b] = math.cos(r)
+
+    return m
 
 if __name__ == '__main__': main()
