@@ -2,7 +2,9 @@ import pygame
 import sys
 import numpy as np
 import math
-import random
+
+from src.shapes.hyper_cube import Hyper_Cube
+from src.shapes.shape import Shape
 
 def main():
 
@@ -147,91 +149,10 @@ def gen_rotator(r, d, a, b):
 
     return m
 
-class Shape:
-
-    def __init__(self, indices, cubes):
-        self.indices = np.array(indices)
-
-        self.cubes = []
-        for cube in cubes:
-            if cube.owns(self.indices):
-                self.cubes.append(cube)
-
-    def get_dist(self, points):
-
-        return np.sum(np.mean(points[:, self.indices], axis=1)**2)
-
-    def is_active(self):
-        if len(self.indices) == 2:
-            return True
-        else:
-            for cube in self.cubes:
-                if cube.active:
-                    return True
-
-        return False
-
-    def render(self, points, display):
-
-        corners = points[self.indices, :]
-
-        if len(self.indices) == 2:
-            pygame.draw.line(display, (0, 255, 255), corners[0], corners[1], width = 5)
-
-        else:
-            for cube in self.cubes:
-                if cube.active:
-                    pygame.draw.polygon(display, cube.colour, corners)
 
 
-class Hyper_Cube:
-
-    def __init__(self, indices):
-
-        self.indices = indices
-        self.active = random.choice([True, False, False, False])
-        self.colour = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
-
-    def owns(self, indices):
-
-        for p in indices:
-            if p not in self.indices:
-                return False
-
-        return True
-
-    @staticmethod
-    def build_cube_list(squares, dimensions):
-        points = squares+1
-        cubes = []
-        base = np.array([i for i in Hyper_Cube.base_generator(0, [points**i for i in range(dimensions)])])
-
-        for offset in Hyper_Cube.offset_generator(0, 0, dimensions, points):
-            cubes.append(Hyper_Cube(base + offset))
-
-        return cubes
-
-    @staticmethod
-    def base_generator(t,l):
-
-        if t == []:
-            return
-
-        yield t
-
-        for i in range(len(l)):
-            yield from Hyper_Cube.base_generator(t+l[i], l[i+1:])
 
 
-    @staticmethod
-    def offset_generator(total, depth, max_depth, points):
-
-        if depth == max_depth:
-            yield total
-            return
-
-        for i in range(points-1):
-            yield from Hyper_Cube.offset_generator(i * points**depth + total, depth+1, max_depth, points)
 
 
 if __name__ == '__main__': main()
