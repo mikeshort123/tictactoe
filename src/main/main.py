@@ -15,13 +15,11 @@ def main():
     clock = pygame.time.Clock()
 
     d = 3
-    s = 2
+    s = 3
 
     shapes = []
 
     corners, shapes, cubes = generate_objects(s, d)
-
-
 
     r=0
 
@@ -52,13 +50,10 @@ def main():
 
         screen_pos = (ZOOM * scaled + np.array([[WIDTH], [HEIGHT]]) / 2).T
 
-
-        #for point in screen_pos:
-            #pygame.draw.circle(display, (255,255,0), point, 5)
-
         ordered_shapes = sorted(shapes, reverse = True, key = lambda s : s.get_dist(transformed))
+        filtered_shapes = filter(lambda s : s.is_active(), ordered_shapes)
 
-        for shape in ordered_shapes:
+        for shape in filtered_shapes:
             shape.render(screen_pos, display)
 
 
@@ -166,6 +161,16 @@ class Shape:
 
         return np.sum(np.mean(points[:, self.indices], axis=1)**2)
 
+    def is_active(self):
+        if len(self.indices) == 2:
+            return True
+        else:
+            for cube in self.cubes:
+                if cube.active:
+                    return True
+
+        return False
+
     def render(self, points, display):
 
         corners = points[self.indices, :]
@@ -175,9 +180,8 @@ class Shape:
 
         else:
             for cube in self.cubes:
-                if cube.active == True:
+                if cube.active:
                     pygame.draw.polygon(display, cube.colour, corners)
-                    return
 
 
 class Hyper_Cube:
@@ -185,7 +189,7 @@ class Hyper_Cube:
     def __init__(self, indices):
 
         self.indices = indices
-        self.active = random.choice([True, False])
+        self.active = random.choice([True, False, False, False])
         self.colour = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
 
     def owns(self, indices):
